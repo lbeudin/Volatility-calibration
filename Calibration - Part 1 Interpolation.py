@@ -2,7 +2,7 @@
 """
 Created on Wed Dec  2 11:14:28 2020
 
-@author: Léa
+@author: 
 """
 import numpy as numpy
 import math
