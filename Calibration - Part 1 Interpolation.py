@@ -2,7 +2,7 @@
 """
 Created on Wed Dec  2 11:14:28 2020
 
-@author: 
+@author: Léa
 """
 import numpy as numpy
 import math
@@ -19,7 +19,6 @@ import random
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""
                          Part 1 méthodes
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-
 def BlackScholes(sigma, K, S, r, T):
     """
     Calculate an option price with BS formula.
@@ -43,11 +42,13 @@ def BlackScholes(sigma, K, S, r, T):
         DESCRIPTION.option price
 
     """
-    d1 = (math.log(S / K) + (r + math.pow(sigma, 2) / 2)) * (T) / (sigma * math.sqrt(T))
-    d2 = d1-sigma * math.pow(T, 0.5)
-    factor = S * scipy.stats.norm(0, 1).cdf(d1) - K * math.exp(-r * T) * scipy.stats.norm(0, 1).cdf(d2)
-    return factor
-
+    if T == 0:
+        return max(S-K,0)
+    else :
+        d1 = (math.log(S / K) + (r + sigma ** 2 / 2) * T) / (sigma * math.sqrt(T))
+        d2 = d1-(sigma * math.sqrt(T))
+        factor = S * scipy.stats.norm(0, 1).cdf(d1) - K * math.exp(-r * T) * scipy.stats.norm(0, 1).cdf(d2)
+        return factor
 
 def newton_raphston(fct, x, N, i):
     """
