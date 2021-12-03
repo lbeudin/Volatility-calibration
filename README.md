@@ -2,8 +2,8 @@
 
 Part 1 - Interpolation
 
-From a table of 10 strikes and 10 prices, I interpolate the data to obtain a surface of valitility. 
-I then use this interpolation to calculate a continuous measure of Breeden-Litzenberger
+From a table of 10 strikes and 10 prices, I interpolate the data to obtain a surface of price. 
+I then use this interpolation to calculate the continuous measure of Breeden-Litzenberger.
 
 Part 2 - Calibration of volatility surfaces.
 
@@ -15,4 +15,4 @@ As it is hard to calibrate the all surface due to long time computation, I look 
 I also implement a monte carlo with 5 parameters and the Ornstein_Uhlenbeck process. 
 
 Part 3 - Recuit 
-I compare antoher calibration alorithm : recuit simulé with neldermead.
+I compare antoher calibration algorithm : recuit simulé with neldermead.
