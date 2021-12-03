@@ -365,24 +365,63 @@ def brownian_motion(nb,taille,hurst):
     return numpy.insert(test, [0], 0)
 
 
-#Monte Carlo UB process
-def MontecarloStochasticUB(returnmean, vbar, volvol, rho, v0, r, T, spot, strike, n, N,hurst) :
-        dt = T / n
-        N = int(N)
-        n = int(n)
-        hurst = abs(hurst)
-        S = numpy.repeat(float(spot),(n))
-        var = numpy.repeat(float(v0),(n))
-        price = 0
-        for i in range(1,int(N)):
-            W1 = numpy.random.rand(n)
-            W2 = brownian_motion(n,n-1,hurst)
-            for j in range(1,int(n)):
-                var[j] = v0 * numpy.exp(returnmean * (vbar - var[j-1]) * dt * i + volvol * numpy.sqrt(numpy.absolute(var[j-1] * dt * i) ) * W2[j])
-                S[j] = spot * numpy.exp((r-numpy.absolute(var[j] / 2)) * dt * i + numpy.sqrt((numpy.absolute(var[j] * dt * i))) * W1[j])
+#Monte Carlo Ornstein Uhlenbeck process
+#Ornstein Uhlenbeck
+def MontecarloStochastic_Ornstein_Uhlenbeck(returnmean, vbar, volvol, rho, v0, r, T, spot, strike, n, N,hurst) :
+    """
+    
+
+    Parameters
+    ----------
+    returnmean : TYPE
+        DESCRIPTION.
+    vbar : TYPE
+        DESCRIPTION.
+    volvol : TYPE
+        DESCRIPTION.
+    rho : TYPE
+        DESCRIPTION.
+    v0 : TYPE
+        DESCRIPTION.
+    r : TYPE
+        DESCRIPTION.
+    T : TYPE
+        DESCRIPTION.
+    spot : TYPE
+        DESCRIPTION.
+    strike : TYPE
+        DESCRIPTION.
+    n : TYPE
+        DESCRIPTION.
+    N : TYPE
+        DESCRIPTION.
+    hurst : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    None.
+
+    """
+    
+    dt = T / n
+    N = int(N)
+    n = int(n)
+    hurst = abs(hurst)
+    S = numpy.repeat(float(spot),(n))
+    var = numpy.repeat(float(v0),(n))
+    price = 0
+    for i in range(1,int(N)):
+        W1 = numpy.random.rand(n)
+        W2 = brownian_motion(n,n-1,hurst)
+        for j in range(1,int(n)):
+            var[j] = v0 * numpy.exp(returnmean * (vbar - var[j-1]) * dt * i + volvol * numpy.sqrt(numpy.absolute(var[j-1] * dt * i) ) * W2[j])
+            S[j] = S[0] * numpy.exp((r-numpy.absolute(var[j] / 2)) * dt * i + numpy.sqrt((numpy.absolute(var[j] * dt * i))) * W1[j])
+        if not math.isnan(numpy.maximum((S[len(S)-1]-strike),0) * numpy.exp(-r * T)) and not math.isinf(numpy.maximum((S[len(S)-1]-strike),0) * numpy.exp(-r * T)):
             price = price + (numpy.maximum((S[len(S)-1]-strike),0)) * numpy.exp(-r * T)
-        price = price / N
-        return (price)  
+        else : 
+            N=N-1
+    return(price)  
 
 
 def montecarlo_stochastic(volvol, v0, r, T, spot, strike, n, N,hurst):
@@ -429,8 +468,11 @@ def montecarlo_stochastic(volvol, v0, r, T, spot, strike, n, N,hurst):
         for j in range(1,int(n)):
             var[j] = v0 * numpy.exp(volvol * numpy.sqrt(numpy.absolute(var[j-1] * dt * i) ) * W2[j])
             S[j] = S[0] * numpy.exp((r-numpy.absolute(var[j] / 2)) * dt * i + numpy.sqrt((numpy.absolute(var[j] * dt * i))) * W1[j])
-        price = price + (numpy.maximum((S[len(S)-1]-strike),0)) * numpy.exp(-r * T)
-    return (price)/N  
+        if not math.isnan(numpy.maximum((S[len(S)-1]-strike),0) * numpy.exp(-r * T)) and not math.isinf(numpy.maximum((S[len(S)-1]-strike),0) * numpy.exp(-r * T)):
+            price = price + (numpy.maximum((S[len(S)-1]-strike),0)) * numpy.exp(-r * T)
+        else : 
+            N=N-1
+    return price/N  
 
 
 #def nelder_mead(f, x_start,step = 0.1, no_improve_thr = 10e-6,no_improv_break = 10, max_iter = 0,alpha = 1., gamma = 2., rho = -0.5, sigma = 0.5):
@@ -515,100 +557,100 @@ def newton_raphston2(fct,x,N,i,X) :
 
 def fe(X):#returnmean, vbar, volvol, rho, v0, r, T, spot, strike, n, N,hurst,market) :
     #X = [volinit,returnmean, vbar, volvol,rho, v0, r, mat[k], spot, strike[y], n, N,hurst]
-    return abs(X[12] - MontecarloStochasticUB(X[1], X[2], X[3], X[4], X[0], X[5], X[6],  X[7],  X[8],  X[9],  X[10], X[11]))
+    return abs(X[12] - MontecarloStochastic_Ornstein_Uhlenbeck(X[1], X[2], X[3], X[4], X[0], X[5], X[6],  X[7],  X[8],  X[9],  X[10], X[11]))
 
 
 def calibrationVolNappe(f,nappe,strike,mat,returnmean, vbar, volvol, rho, v0, r, T, spot, n, N,hurst):
-    newnappevol = numpy.zeros(shape = [int(len(strike) / 5),int(len(mat) / 10)])
-    for y in np.arange(0,len(strike),5) :
-        for k in np.arange(1,len(mat),10):
-            volinit = v0
+    newnappevol = numpy.zeros(shape = [len(strike),len(mat)])
+    for y in np.arange(0,len(strike)) :
+        for k in np.arange(0,len(mat)):
             X = [returnmean, vbar, volvol,rho, r, mat[k], spot, strike[y], n, N,hurst,nappe[y,k]]
-            x = [volinit]
+            x = [v0]
             ttest = newton_raphston2(f,x,30,0.01,X)
-            newnappevol[int(y / 5),int(k / 10)] = ttest
+            newnappevol[y,k] = ttest
         print(y)
     return newnappevol
+
 
 def calibrationVolNappeNelderMead(f,nappe,strike,mat,returnmean, vbar, volvol, rho, v0, r, T, spot, n, N,hurst):
-    newnappevol = numpy.zeros(shape = [int(len(strike) / 5),int(len(mat) / 10)])
-    for y in np.arange(0,len(strike),5) :
-        for k in np.arange(1,len(mat),10):
-            volinit = v0[int(y / 5),int(k / 10)]
+    newnappevol = numpy.zeros(shape = [len(strike),len(mat)])
+    for y in np.arange(0,len(strike)) :
+        for k in np.arange(0,len(mat)): 
+            volinit=nappe[y,k]
             X = [returnmean, vbar, volvol,rho, r, mat[k], spot, strike[y], n, N,hurst,nappe[y,k]]
             x = [volinit]
             #step,stop_stagne,stop, ittBreak,X_params
-            ttest = neldermead(f,x,0.01,0.001,50, 50,X)
-            newnappevol[int(y / 5),int(k / 10)] = ttest[0][0]
+            ttest = neldermead(f,x,0.05,0.05,50, 50,X)
+            newnappevol[y,k] = ttest[0][0]
         print(y)
     return newnappevol
+
 
 def calibrationVolVolNappeNelderMead(f,nappe,strike,mat,returnmean, vbar, volvol, rho, v0, r, T, spot, n, N,hurst):
-    newnappevol = numpy.zeros(shape = [int(len(strike) / 5),int(len(mat) / 10)])
-    for y in np.arange(0,len(strike),5) :
-        for k in np.arange(1,len(mat),10):
-            volinit = v0
-            X = [returnmean, vbar,rho,volinit, r, mat[k], spot, strike[y], n, N,hurst,nappe[y,k]]
+    newnappevol = numpy.zeros(shape = [len(strike),len(mat)])
+    for y in np.arange(0,len(strike)) :
+        for k in np.arange(0,len(mat)):
+            X = [returnmean, vbar,rho,v0, r, mat[k], spot, strike[y], n, N,hurst,nappe[y,k]]
             x = [volvol]
             #step,stop_stagne,stop, ittBreak,X_params
-            ttest = neldermead(f,x,0.01,0.001,5, 20,X)
-            newnappevol[int(y / 5),int(k / 10)] = ttest[0][0]
+            ttest = neldermead(f,x,0.05,0.05,5, 20,X)
+            newnappevol[y,k] = ttest[0][0]
         print(y)
     return newnappevol
+
 
 def calibrationVolvolNappe(f,nappe,strike,mat,returnmean, vbar, volvol, rho, v0, r, T, spot, n, N,hurst):
-    newnappevol = numpy.zeros(shape = [int(len(strike) / 5),int(len(mat) / 10)])
-    for y in np.arange(0,len(strike),5) :
-        for k in np.arange(1,len(mat),10):
-            volinit = v0
-            X = [returnmean, vbar,rho,volinit, r, mat[k], spot, strike[y], n, N,hurst,nappe[y,k]]
+    newnappevol = numpy.zeros(shape = [len(strike),len(mat)])
+    for y in np.arange(0,len(strike)) :
+        for k in np.arange(0,len(mat)):
+            X = [returnmean, vbar,rho,v0, r, mat[k], spot, strike[y], n, N,hurst,nappe[y,k]]
             x = [volvol]
-            tt = newton_raphston2(f,x,30,0.01,X)
-            newnappevol[y,k] = tt
+            newnappevol=newton_raphston2(f,x,30,0.01,X)
     return newnappevol
 
+
 def calibrationHurstnappeNelderMead(f,nappe,strike,mat,returnmean, vbar, volvol, rho, v0, r, T, spot, n, N,hurst):
-    newnappevol = numpy.zeros(shape = [int(len(strike) / 5),int(len(mat) / 10)])
-    for y in np.arange(0,len(strike),5) :
-        for k in np.arange(1,len(mat),10):
-            volinit = v0
-            X = [returnmean, vbar,volvol,rho,volinit, r, mat[k], spot, strike[y], n, N,nappe[y,k]]
+    newnappevol = numpy.zeros(shape = [len(strike),len(mat)])
+    for y in np.arange(0,len(strike)) :
+        for k in np.arange(0,len(mat)):
+            X = [returnmean, vbar,volvol,rho,v0, r, mat[k], spot, strike[y], n, N,nappe[y,k]]
             x = [hurst]
             #step,stop_stagne,stop, ittBreak,X_params
-            ttest = neldermead(f,x,0.01,0.001,5, 20,X)
-            newnappevol[int(y / 5),int(k / 10)] = ttest[0][0]
+            ttest = neldermead(f,x,0.05,0.05,5, 20,X)
+            newnappevol[y,k] = ttest[0][0]
         print(y)
     return newnappevol
 
+
 def calibrationHurstNappe(f,nappe,strike,mat,returnmean, vbar, volvol, rho, v0, r, T, spot, n, N,hurst):
-    newnappevol = numpy.zeros(shape = [int(len(strike) / 5),int(len(mat) / 10)])
-    for y in np.arange(0,len(strike),5) :
-        for k in np.arange(1,len(mat),10):
-            volinit = v0
-            X = [returnmean, vbar,volvol,rho,volinit, r, mat[k], spot, strike[y], n, N,nappe[y,k]]
+    newnappevol = numpy.zeros(shape = [len(strike),len(mat)])
+    for y in np.arange(0,len(strike)) :
+        for k in np.arange(0,len(mat)):
+            X = [returnmean, vbar,volvol,rho,v0, r, mat[k], spot, strike[y], n, N,nappe[y,k]]
             x = [hurst]
-            tt = newton_raphston2(f,x,30,0.01,X)
-            newnappevol[y,k] = tt
+            newnappevol[y,k] = newton_raphston2(f,x,30,0.01,X)
     return newnappevol
 
+
 def calibration3paramsNappeNelderMead(f,nappe,strike,mat,returnmean, vbar, volvol, rho, v0, r, T, spot, n, N,hurst):
-    newnappevol = numpy.zeros(shape = [int(len(strike) / 5),int(len(mat) / 10)])
-    newnappevolvol = numpy.zeros(shape = [int(len(strike) / 5),int(len(mat) / 10)])
-    newnappehurst = numpy.zeros(shape = [int(len(strike) / 5),int(len(mat) / 10)])
-    for y in np.arange(0,len(strike),5) :
-        for k in np.arange(1,len(mat),10):
-            volinit = v0[int(y / 5),int(k / 10)]
+    newnappevol = numpy.zeros(shape = [len(strike),len(mat)])
+    newnappevolvol = numpy.zeros(shape = [len(strike),len(mat)])
+    newnappehurst = numpy.zeros(shape = [len(strike),len(mat)])
+    for y in np.arange(0,len(strike)) :
+        for k in np.arange(0,len(mat)):
+            volinit = v0[y,k]
             X = [returnmean, vbar,rho, r, mat[k], spot, strike[y], n, N,nappe[y,k]]
             x = [volinit,volvol,hurst]
             ttest = neldermead(f,x,0.01,0.0001,10, 60,X)
-            newnappevol[int(y / 5),int(k / 10)] = ttest[0][0]
-            newnappehurst[int(y / 5),int(k / 10)] = ttest[0][2]
-            newnappevolvol[int(y / 5),int(k / 10)] = ttest[0][1]
+            newnappevol[y,k] = ttest[0][0]
+            newnappehurst[y,k] = ttest[0][2]
+            newnappevolvol[y,k] = ttest[0][1]
         print(y)
     test = [newnappevol,newnappevolvol,newnappehurst]
     return test
 
-def MontecarloStochasticUB(returnmean, vbar, volvol, rho, v0, r, T, spot, strike, n, N,hurst) :
+
+def MontecarloStochastic_Ornstein_Uhlenbeck(returnmean, vbar, volvol, rho, v0, r, T, spot, strike, n, N,hurst) :
         dt = T / n
         N = int(N)
         n = int(n)
@@ -622,11 +664,12 @@ def MontecarloStochasticUB(returnmean, vbar, volvol, rho, v0, r, T, spot, strike
         price = max(numpy.exp(-r * T) * (spot- strike),0)
         return numpy.mean(price)    
     
-def fe_UB(X): #(returnmean, vbar, volvol, rho, v0, r, T, spot, strike, n, N,hurst)
-    return X[12] - MontecarloStochasticUB(X[1], X[2], X[0], X[3], X[4], X[5], X[6],  X[7],  X[8],  X[9],  X[10], X[11])
+    
+def calibrate_Ornstein_Uhlenbeck(X): #(returnmean, vbar, volvol, rho, v0, r, T, spot, strike, n, N,hurst)
+    return X[12] - MontecarloStochastic_Ornstein_Uhlenbeck(X[1], X[2], X[0], X[3], X[4], X[5], X[6],  X[7],  X[8],  X[9],  X[10], X[11])
 
 
-def calibrate_six_params_heston(X,Y):
+def calibrate_six_params(X,Y):
     #(returnmean, vbar, volvol, rho, v0, r, T, spot, strike, n, N,hurst)
     #[v0,returnmean, vbar, volvol,rho,hurst, r,   Xtime[matu], spot, X[stri], n, N,marke_price]
     return abs(Y[6] - montecarlo_stochastic(X[1], X[2], X[0], X[3], X[4], Y[0], Y[1],  Y[2],  Y[3],  Y[4],  Y[5], X[5]))
@@ -657,40 +700,7 @@ def calibration_monte_3params(X,Y): #(returnmean, vbar, volvol, rho, v0, r, T, s
 
 def functUB(X,Y): #(returnmean, vbar, volvol, rho, v0, r, T, spot, strike, n, N,hurst)
     #[v0,returnmean, vbar, volvol,rho,hurst, r,   Xtime[matu], spot, X[stri], n, N,marke_price]
-    return abs(Y[6] - MontecarloStochasticUB(X[1], X[2], X[0], X[3], X[4], Y[0], Y[1],  Y[2],  Y[3],  Y[4],  Y[5], X[5]))
-
-
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-                         Part 3 méthodes
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-def recuit(Xp,start,stop,Xparams,dist):
-    X = [i for i in range(0,len(Xp))]
-    X_sol = copy.copy(X)
-    X_dist = dist(Xp,Xparams)
-    #X_sol.append(X_sol[0])
-    i = 0
-    while start>stop:
-        value = [abs(np.random.normal(Xp[i],0.1)) for i in range(len(Xp))]
-        if(value[2]<0):
-            value[2] = abs(value[2])
-        if (value[2])>1 :
-            value[2] = abs(1 / value[2])
-        if dist(value,Xparams)<X_dist:
-            X_sol = copy.copy(value)
-            X_dist = dist(value,Xparams)
-            X = copy.copy(value)
-            X_sol.append(X_sol[0])
-        else:
-            if rnd.rand()<numpy.exp(-abs(dist(value,Xparams)-dist(Xp,Xparams)) / start):
-                Xp = copy.copy(value)
-            #refroidissement
-            start = start * 0.95
-        i = i + 1
-    print(i)
-    return(value)
-
-def funct_recuit(X,Y): #(returnmean, vbar, volvol, rho, v0, r, T, spot, strike, n, N,hurst)
-    return abs(Y[9] - MontecarloStochasticUB(Y[0], Y[1], X[1], Y[2], X[0], Y[3],  Y[4],  Y[5],  Y[6],  Y[7],Y[8], X[2]))
+    return abs(Y[6] - MontecarloStochastic_Ornstein_Uhlenbeck(X[1], X[2], X[0], X[3], X[4], Y[0], Y[1],  Y[2],  Y[3],  Y[4],  Y[5], X[5]))
 
 
 
@@ -840,19 +850,25 @@ print("Time :",str(toc-tic))
 
 #test nelder mead calibrationd du strike 98.3 et 7 mois
 n = 30
-N = 2000
+N = 5000
 Xparams = [0, 0,0, r, maturite , spot, striketest, n, N,marke_price]
 x = [v0,volvol,hurst]
-parameters = neldermead(calibration_monte_3params, x,0.1,0.001,40, 70,Xparams)
+parameters = neldermead(calibration_monte_3params, x,0.1,0.01,40, 70,Xparams)
 print("Parameters calibrated Heston [vol,volvol,hurst] ",parameters)
-#[array([0.32287099, 0.14080989, 0.25223073]), 0.08964693749951458]
+#Parameters calibrated Heston [vol,volvol,hurst]  [array([0.13107441, 0.22117992, 0.27079042]), 0.0065950573488686715]
+
+Xparams = [0, 0,0, r, maturite , spot, striketest, n, N,marke_price]
+x = [v0,volvol,hurst]
+parameters2_ = neldermead(calibrate_Ornstein_Uhlenbeck, x,0.1,0.01,40, 70,Xparams)
+
+
+
 
 n = 30
-N = 1000
-#[array([0.3711389 , 0.14092729, 0.31451458]), 0.000474467477216578]
+N = 5000
 price_calibrated = montecarlo_stochastic(parameters[0][1], parameters[0][0], r, Xtime[matu], spot, X[stri], n, N,parameters[0][2]) 
 print(price_calibrated) 
-#6.530757694461629
+#4.995575061993855
 
 price_calibrated = montecarlo_stochastic(0.19873639,0.14231562, r, Xtime[matu], spot, X[stri], n, N,0.25129164) 
 print(price_calibrated) 
@@ -860,45 +876,37 @@ print(price_calibrated)
 
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-Calibration 3 Nappes 1 paramètres
+Calibration of 3 surfaces for each parameters vol, vol of vol and hurst exponent
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 n = 30
-N = 500
+N = 3000
 v0 = 0.1352
 #créer les 3 nappes
 
-X = numpy.arange(95,104,0.5)
-Xtime = numpy.arange(0,1,0.1)
-
 #Neldermead c'est 1000 Fois mieux que newton raphston.
-voll = numpy.zeros(shape = (18,10))
-for i in np.arange(0,len(X),5):
-     for j in np.arange(0,len(Xtime),10):
-         voll[int(i / 5),int(j / 10)] = nappe[i,j]
-X = numpy.arange(95,104,0.1)
-Xtime = numpy.arange(0,1,0.01)        
+voll = [vol3m,vol6m,vol9m,vol12m]    
 tic = ti.perf_counter()
-nappevol_nelder = calibrationVolNappeNelderMead(calibrate_vol,nappe,X,Xtime,0, 0, volvol, 0, voll, r, T, spot, n, N,hurst)
+nappevol_nelder = calibrationVolNappeNelderMead(calibrate_vol,nappe,strike,time,0, 0, volvol, 0, voll, r, T, spot, n, N,hurst)
 toc = ti.perf_counter()
 print("Time :",str(toc-tic))
 
 #5851sec
 tic = ti.perf_counter()
-nappevolvol = calibrationVolVolNappeNelderMead(calibrate_volvol,nappeprice,X,Xtime,0, 0, volvol, 0, v0, r, T, spot, n, N,hurst)
-toc = ti.perf_counter()
-print("Time :",str(toc-tic))
-#5323
-tic = ti.perf_counter()
-nappehurst = calibrationHurstnappeNelderMead(calibrate_hurst,nappeprice,X,Xtime,0, 0, volvol, 0, v0, r, T, spot, n, N,hurst)
+nappevolvol = calibrationVolVolNappeNelderMead(calibrate_volvol,nappeprice,strike,time,0, 0, volvol, 0, v0, r, T, spot, n, N,hurst)
 toc = ti.perf_counter()
 print("Time :",str(toc-tic))
 
+#5323
+tic = ti.perf_counter()
+nappehurst = calibrationHurstnappeNelderMead(calibrate_hurst,nappeprice,strike,time,0, 0, volvol, 0, v0, r, T, spot, n, N,hurst)
+toc = ti.perf_counter()
+print("Time :",str(toc-tic))
 
 #print 3 nappes: 
 Zmat = np.array(nappevol_nelder)
 Zmat[numpy.isneginf(Zmat)] = 0
-Xmat = numpy.array([np.arange(95,104,0.5),] * 10) 
-Ymat = numpy.array([np.arange(0,1,0.1),] * 18).transpose()
+Xmat = numpy.array([strike,] * 4) 
+Ymat = numpy.array([time,] * 10).transpose()
 fig3 = plt.figure()
 ax3 = fig3.gca(projection = '3d')
 surf3 = ax3.plot_surface(Xmat, Ymat, Zmat.transpose(), cmap = cm.coolwarm,
@@ -912,11 +920,10 @@ ax3.set_ylabel('Time until mat in year')
 ax3.set_zlabel('Nappe Vol')
 plt.show()
 
-
 Zmat = np.array(nappevolvol)
 Zmat[numpy.isneginf(Zmat)] = 0
-Xmat = numpy.array([np.arange(95,104,0.5),] * 10) 
-Ymat = numpy.array([np.arange(0,1,0.1),] * 18).transpose()
+Xmat = numpy.array([strike,] * 4) 
+Ymat = numpy.array([time,] * 10).transpose()
 fig4 = plt.figure()
 ax4 = fig4.gca(projection = '3d')
 surf4 = ax4.plot_surface(Xmat, Ymat, Zmat.transpose(), cmap = cm.coolwarm,
@@ -932,8 +939,8 @@ plt.show()
 
 Zmat = np.array(nappehurst)
 Zmat[numpy.isneginf(Zmat)] = 0
-Xmat = numpy.array([np.arange(95,104,0.5),] * 10) 
-Ymat = numpy.array([np.arange(0,1,0.1),] * 18).transpose()
+Xmat = numpy.array([strike,] * 4) 
+Ymat = numpy.array([time,] * 10).transpose()
 fig5 = plt.figure()
 ax5 = fig5.gca(projection = '3d')
 surf5 = ax5.plot_surface(Xmat, Ymat, Zmat.transpose(), cmap = cm.coolwarm,
@@ -960,9 +967,9 @@ print("Vol nappe :",vol)
 
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-Calibration Nappe 3 paramètres
+Calibration one surface with 3 parameters
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-N = 500
+N = 3000
 tic = ti.perf_counter()
 params3 = calibration3paramsNappeNelderMead(calibration_monte_3params,nappeprice,X,Xtime,0, 0, volvol, 0, voll, r, T, spot, n, N,hurst)
 toc = ti.perf_counter()
@@ -1018,7 +1025,7 @@ plt.show()
 
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-Question 5
+Question 5 - We calibrate with precision for one specifique point of the surface (strike = 98.3 and mat = 7 months)
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 n = 30
 N = 2000
@@ -1080,7 +1087,7 @@ print("Time :",str(toc-tic))
 
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-UB 
+Calculation with the Ornstein_Uhlenbeck Process 5 parameters
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 #Avec 5 parametres
@@ -1089,7 +1096,7 @@ vbar = 0.1
 rho = 0.3
 params = [vol2,returnmean, vbar, volvol2,rho,hurst2]
 X_params = [ r,matu, spot,striketest, n, N,nappeprice[posi,posic]]
-v022 = neldermead(calibrate_six_params_heston, params,step,0.0001,10, 20,X_params)
+v022 = neldermead(calibrate_six_params, params,step,0.0001,10, 20,X_params)
 print(v022)
 print(step)
 #[array([0.24851852, 0.98518519, 0.91111111, 0.20185185, 0.96296296,0.36851852]), 0.26000935000210745]
